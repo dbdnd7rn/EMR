@@ -9,7 +9,9 @@
     "mobile": "npm --workspace @envizion/mobile run start",
     "mobile:android": "npm --workspace @envizion/mobile run android",
     "mobile:ios": "npm --workspace @envizion/mobile run ios",
-    "typecheck": "npm --workspace @envizion/mobile run typecheck"
+    "admin": "npm --workspace @envizion/admin run dev",
+    "admin:build": "npm --workspace @envizion/admin run build",
+    "typecheck": "npm --workspace @envizion/mobile run typecheck && npm --workspace @envizion/admin run typecheck"
   },
   "engines": {
     "node": ">=22.13.0"

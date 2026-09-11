@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from 'react';
 
+import { useAdminAuth } from '../components/AdminAuthGate';
+
 type Status = 'Draft' | 'In review' | 'Approved' | 'Published';
 type ContentType = 'Condition guide' | 'Specialist guide' | 'Action plan' | 'Resource' | 'Safety message' | 'Emergency guide' | 'Transition guide' | 'Support resource';
 
@@ -93,6 +95,13 @@ function blankItem(id: number): ContentItem {
 }
 
 export default function AdminDashboard() {
+  const auth = useAdminAuth();
+  const role = auth.status === 'ready' ? auth.identity.role : 'editor';
+  const identity = auth.status === 'ready' ? auth.identity : null;
+  const canEdit = role === 'admin' || role === 'editor';
+  const canReview = role === 'admin' || role === 'reviewer';
+  const canPublish = role === 'admin';
+
   const [active, setActive] = useState('Dashboard');
   const [query, setQuery] = useState('');
   const [items, setItems] = useState<ContentItem[]>(seedItems);
@@ -124,6 +133,11 @@ export default function AdminDashboard() {
   };
 
   const startNew = () => {
+    if (!canEdit) {
+      setSavedMessage('Your role can review content but cannot create a new draft.');
+      return;
+    }
+
     const nextId = Math.max(0, ...items.map((item) => item.id)) + 1;
     setSelectedId(null);
     setDraft(blankItem(nextId));
@@ -132,6 +146,27 @@ export default function AdminDashboard() {
 
   const save = (nextStatus?: Status) => {
     if (!draft || !draft.title.trim()) return;
+
+    if (!nextStatus && !canEdit) {
+      setSavedMessage('Only Admins and Editors can save draft changes.');
+      return;
+    }
+
+    if (nextStatus === 'In review' && !(canEdit || canReview)) {
+      setSavedMessage('Your role cannot send content to review.');
+      return;
+    }
+
+    if (nextStatus === 'Approved' && !canReview) {
+      setSavedMessage('Only Admins and Reviewers can approve content.');
+      return;
+    }
+
+    if (nextStatus === 'Published' && !canPublish) {
+      setSavedMessage('Only an Admin can publish content to the toolkit.');
+      return;
+    }
+
     const next: ContentItem = { ...draft, status: nextStatus ?? draft.status, updated: 'Now' };
     setItems((current) => {
       const exists = current.some((item) => item.id === next.id);
@@ -165,6 +200,16 @@ export default function AdminDashboard() {
           <span className="dot" />
           Clinical wording stays in review until approved.
         </div>
+
+        {identity && (
+          <div className="sidebarNote">
+            <span className="dot" />
+            <div>
+              <strong style={{ display: 'block', color: '#FFFFFF', textTransform: 'capitalize' }}>{role}</strong>
+              <span>{identity.displayName}</span>
+            </div>
+          </div>
+        )}
       </aside>
 
       <section className="content">
@@ -174,14 +219,14 @@ export default function AdminDashboard() {
             <h1>{active}</h1>
             <p className="subtitle">Create, review, approve, publish, and maintain caregiver education.</p>
           </div>
-          <button className="primaryButton" onClick={startNew}>+ New content</button>
+          <button className="primaryButton" onClick={startNew} disabled={!canEdit} style={{ opacity: canEdit ? 1 : 0.55, cursor: canEdit ? 'pointer' : 'not-allowed' }}>+ New content</button>
         </header>
 
         <section className="statsGrid">
           <article className="statCard blue"><span>Published</span><strong>{published}</strong><small>Live in the toolkit</small></article>
           <article className="statCard purple"><span>In review</span><strong>{review}</strong><small>Waiting for approval</small></article>
           <article className="statCard orange"><span>Drafts</span><strong>{draftCount}</strong><small>Work in progress</small></article>
-          <article className="statCard neutral"><span>Safety</span><strong>Active</strong><small>Education-only boundaries</small></article>
+          <article className="statCard neutral"><span>Role</span><strong style={{ textTransform: 'capitalize' }}>{role}</strong><small>{canPublish ? 'Full publishing access' : canReview ? 'Review and approval access' : 'Draft and review submission access'}</small></article>
         </section>
 
         <section style={{ display: 'grid', gridTemplateColumns: draft ? 'minmax(0, 1.15fr) minmax(360px, .85fr)' : '1fr', gap: 20, alignItems: 'start' }}>
@@ -224,14 +269,14 @@ export default function AdminDashboard() {
               </div>
 
               <div style={{ display: 'grid', gap: 14 }}>
-                <label style={labelStyle}>Title<input style={fieldStyle} value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} placeholder="Content title" /></label>
+                <label style={labelStyle}>Title<input disabled={!canEdit} style={{ ...fieldStyle, opacity: canEdit ? 1 : 0.7 }} value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} placeholder="Content title" /></label>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                  <label style={labelStyle}>Type<select style={fieldStyle} value={draft.type} onChange={(event) => setDraft({ ...draft, type: event.target.value as ContentType })}>{typeOptions.map((type) => <option key={type}>{type}</option>)}</select></label>
-                  <label style={labelStyle}>Care area<input style={fieldStyle} value={draft.area} onChange={(event) => setDraft({ ...draft, area: event.target.value })} placeholder="e.g. Neurology" /></label>
+                  <label style={labelStyle}>Type<select disabled={!canEdit} style={{ ...fieldStyle, opacity: canEdit ? 1 : 0.7 }} value={draft.type} onChange={(event) => setDraft({ ...draft, type: event.target.value as ContentType })}>{typeOptions.map((type) => <option key={type}>{type}</option>)}</select></label>
+                  <label style={labelStyle}>Care area<input disabled={!canEdit} style={{ ...fieldStyle, opacity: canEdit ? 1 : 0.7 }} value={draft.area} onChange={(event) => setDraft({ ...draft, area: event.target.value })} placeholder="e.g. Neurology" /></label>
                 </div>
-                <label style={labelStyle}>Summary<textarea style={{ ...fieldStyle, minHeight: 84, resize: 'vertical' }} value={draft.summary} onChange={(event) => setDraft({ ...draft, summary: event.target.value })} placeholder="Short caregiver-facing summary" /></label>
-                <label style={labelStyle}>Content<textarea style={{ ...fieldStyle, minHeight: 150, resize: 'vertical' }} value={draft.body} onChange={(event) => setDraft({ ...draft, body: event.target.value })} placeholder="Approved educational content" /></label>
-                <label style={labelStyle}>Safety message<textarea style={{ ...fieldStyle, minHeight: 92, resize: 'vertical' }} value={draft.safetyNote} onChange={(event) => setDraft({ ...draft, safetyNote: event.target.value })} placeholder="Education-only, emergency, or treatment boundary" /></label>
+                <label style={labelStyle}>Summary<textarea disabled={!canEdit} style={{ ...fieldStyle, minHeight: 84, resize: 'vertical', opacity: canEdit ? 1 : 0.7 }} value={draft.summary} onChange={(event) => setDraft({ ...draft, summary: event.target.value })} placeholder="Short caregiver-facing summary" /></label>
+                <label style={labelStyle}>Content<textarea disabled={!canEdit} style={{ ...fieldStyle, minHeight: 150, resize: 'vertical', opacity: canEdit ? 1 : 0.7 }} value={draft.body} onChange={(event) => setDraft({ ...draft, body: event.target.value })} placeholder="Approved educational content" /></label>
+                <label style={labelStyle}>Safety message<textarea disabled={!canEdit} style={{ ...fieldStyle, minHeight: 92, resize: 'vertical', opacity: canEdit ? 1 : 0.7 }} value={draft.safetyNote} onChange={(event) => setDraft({ ...draft, safetyNote: event.target.value })} placeholder="Education-only, emergency, or treatment boundary" /></label>
 
                 <div style={{ padding: 14, borderRadius: 14, background: '#F6F2FF', border: '1px solid #E4DDF8' }}>
                   <strong style={{ display: 'block', color: '#49358C' }}>Current status: {draft.status}</strong>
@@ -241,10 +286,10 @@ export default function AdminDashboard() {
                 {savedMessage && <div style={{ padding: 12, borderRadius: 12, background: '#EEF7F3', color: '#216E54', fontWeight: 700 }}>{savedMessage}</div>}
 
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-                  <button className="primaryButton" onClick={() => save()}>Save draft</button>
-                  <button style={secondaryButtonStyle} onClick={() => save('In review')}>Send to review</button>
-                  <button style={secondaryButtonStyle} onClick={() => save('Approved')}>Approve</button>
-                  <button style={{ ...secondaryButtonStyle, borderColor: '#C95B3F', color: '#A33E28' }} onClick={() => save('Published')}>Publish</button>
+                  <button className="primaryButton" disabled={!canEdit} onClick={() => save()} style={{ opacity: canEdit ? 1 : 0.5, cursor: canEdit ? 'pointer' : 'not-allowed' }}>Save draft</button>
+                  <button disabled={!(canEdit || canReview)} style={{ ...secondaryButtonStyle, opacity: canEdit || canReview ? 1 : 0.5, cursor: canEdit || canReview ? 'pointer' : 'not-allowed' }} onClick={() => save('In review')}>Send to review</button>
+                  <button disabled={!canReview} style={{ ...secondaryButtonStyle, opacity: canReview ? 1 : 0.5, cursor: canReview ? 'pointer' : 'not-allowed' }} onClick={() => save('Approved')}>Approve</button>
+                  <button disabled={!canPublish} style={{ ...secondaryButtonStyle, borderColor: '#C95B3F', color: '#A33E28', opacity: canPublish ? 1 : 0.5, cursor: canPublish ? 'pointer' : 'not-allowed' }} onClick={() => save('Published')}>Publish</button>
                 </div>
               </div>
             </aside>
@@ -252,10 +297,10 @@ export default function AdminDashboard() {
         </section>
 
         <section className="workflow">
-          <div><span>1</span><strong>Draft</strong><small>Create or update content</small></div>
-          <div><span>2</span><strong>Review</strong><small>Clinical/content review</small></div>
-          <div><span>3</span><strong>Approve</strong><small>Authorized sign-off</small></div>
-          <div><span>4</span><strong>Publish</strong><small>Release to the toolkit</small></div>
+          <div><span>1</span><strong>Draft</strong><small>Editor creates or updates content</small></div>
+          <div><span>2</span><strong>Review</strong><small>Reviewer checks wording and source</small></div>
+          <div><span>3</span><strong>Approve</strong><small>Reviewer or Admin signs off</small></div>
+          <div><span>4</span><strong>Publish</strong><small>Admin releases to the toolkit</small></div>
         </section>
       </section>
     </main>

@@ -1,0 +1,16 @@
+{
+  "expo": {
+    "name": "EnVizion Life",
+    "slug": "envizion-life-caregiver-toolkit",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "net.envizionlife.caregivertoolkit"
+    },
+    "android": {
+      "package": "net.envizionlife.caregivertoolkit"
+    }
+  }
+}

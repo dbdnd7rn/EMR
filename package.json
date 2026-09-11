@@ -1,0 +1,17 @@
+{
+  "name": "envizion-life-digital-caregiver-toolkit",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "mobile": "npm --workspace @envizion/mobile run start",
+    "mobile:android": "npm --workspace @envizion/mobile run android",
+    "mobile:ios": "npm --workspace @envizion/mobile run ios",
+    "typecheck": "npm --workspace @envizion/mobile run typecheck"
+  },
+  "engines": {
+    "node": ">=22.13.0"
+  }
+}

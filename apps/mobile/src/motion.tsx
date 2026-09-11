@@ -2,12 +2,13 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
   Animated,
+  Pressable,
   PressableProps,
   StyleProp,
   ViewStyle,
 } from 'react-native';
 
-const AnimatedPressable = Animated.createAnimatedComponent(Animated.View);
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export function useReducedMotion() {
   const [reduceMotion, setReduceMotion] = useState(false);
@@ -104,19 +105,15 @@ export function MotionPressable({
   };
 
   return (
-    <AnimatedPressable style={[style, { transform: [{ scale }] }]}>
-      <Animated.View style={{ flex: 1 }}>
-        <Pressable
-          accessibilityLabel={accessibilityLabel}
-          accessibilityRole="button"
-          onPress={onPress}
-          onPressIn={() => animate(0.975)}
-          onPressOut={() => animate(1)}
-          style={{ flex: 1 }}
-        >
-          {children}
-        </Pressable>
-      </Animated.View>
+    <AnimatedPressable
+      accessibilityLabel={accessibilityLabel}
+      accessibilityRole="button"
+      onPress={onPress}
+      onPressIn={() => animate(0.975)}
+      onPressOut={() => animate(1)}
+      style={[style, { transform: [{ scale }] }]}
+    >
+      {children}
     </AnimatedPressable>
   );
 }

@@ -27,24 +27,36 @@ Approval and publishing are separate steps. Clinical or safety-sensitive wording
 
 A source/reference note should be attached before approval so reviewers can trace the wording back to an EnVizion Life source or other explicitly approved material.
 
+## Roles
+
+The portal now uses three CMS roles:
+
+- **Editor** — create and update drafts, then send content to review.
+- **Reviewer** — review submitted content and move it to approved status.
+- **Admin** — full access, including publishing and administrative management.
+
+The browser UI reflects these capabilities, and Supabase row-level-security policies enforce compatible write boundaries at the database layer.
+
+## Authentication
+
+The admin portal includes a branded Supabase Auth sign-in screen and an application-wide auth gate. Only authenticated users with an active record in `public.admin_users` may access the CMS.
+
+The role table is introduced in `supabase/migrations/0003_admin_roles.sql`.
+
+A first admin must be bootstrapped through a trusted server/service-role path after the corresponding Supabase Auth user exists. Do not expose the service-role key in browser code or manually hard-code it into the repository.
+
 ## Current implementation
 
-The current admin UI supports working content creation and editing in the prototype. The database schema now supports the full approval lifecycle plus specialist guides and safety messages.
+The current admin UI supports working content creation and editing in the prototype. The database schema supports the full approval lifecycle, specialist guides, safety messages, admin roles, and role-aware RLS policies.
 
-The server-side Supabase repository lives in `apps/admin/lib/supabase-content.ts`. It uses server-only environment variables and must never be imported into browser/client code.
+The browser Supabase client lives in `apps/admin/lib/supabase-browser.ts`. The server-side content repository lives in `apps/admin/lib/supabase-content.ts`.
 
 ## Security boundary
 
-There are intentionally no Supabase client-side write policies yet. Before persistent CMS writes are enabled, the project needs:
+`NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are safe for browser configuration when RLS is correctly enabled. `SUPABASE_SERVICE_ROLE_KEY` is server-only and must never be committed to Git or exposed through a `NEXT_PUBLIC_` environment variable.
 
-1. authenticated EnVizion Life admin users
-2. explicit admin/editor/reviewer roles
-3. row-level-security policies for those roles
-4. audit/version history for changes and approvals
-5. confirmation of who is allowed to approve clinical and safety content
-
-`SUPABASE_SERVICE_ROLE_KEY` is server-only. A real key must never be committed to Git or exposed through a `NEXT_PUBLIC_` environment variable.
+No personal caregiver or patient health data should be introduced into the CMS tables. The CMS is for approved educational/publication content.
 
 ## Next implementation step
 
-Add Supabase Auth for administrators, define role authorization, then expose narrowly scoped authenticated server actions that call the server-only content repository. After that, replace prototype in-memory content state with persistent database-backed content.
+Replace the remaining in-memory CMS content state with authenticated Supabase reads and writes, create version-history events on review/approval/publish transitions, and add an admin-only user-management screen for inviting or deactivating Editors and Reviewers.
